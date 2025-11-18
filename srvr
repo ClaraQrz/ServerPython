@@ -1,0 +1,61 @@
+# Importa o módulo socket
+from socket import *
+import sys  # Necessário para encerrar o programa
+
+# Cria o socket TCP (orientado à conexão)
+serverSocket = socket(AF_INET, SOCK_STREAM)
+
+# Configuração inicial do servidor
+serverPort = 6789   # Porta para escutar requisições
+serverSocket.bind(('', serverPort))   # Associa o socket à porta
+serverSocket.listen(1)   # Define o número máximo de conexões pendentes
+
+print(f"Server is running on port {serverPort}...\n")
+
+while True:
+    # Aguarda uma conexão do cliente
+    print("Waiting for a new connection...")
+    connectionSocket, addr = serverSocket.accept()
+
+    try:
+        # Recebe a requisição HTTP enviada pelo cliente
+        message = connectionSocket.recv(1024).decode()
+
+        print("\n📩 HTTP request received:")
+        print(message) # Printa todo o cabeçalho da requisição
+
+        # Divide a requisição em partes (ex: GET /HelloWorld.html HTTP/1.1)
+        partes = message.split()
+
+        # Extrai o nome do arquivo requisitado
+        filename = partes[1]  # Ex: /HelloWorld.html
+
+        # Remove a barra inicial '/' para abrir o arquivo local
+        f = open(filename[1:])
+        outputdata = f.read()
+
+        # Envia a linha de status HTTP 200 (sucesso)
+        connectionSocket.send("HTTP/1.1 200 OK\r\n\r\n".encode())
+        print(f"✅ Sending response: 200 OK for {filename}\n")
+
+        # Envia o conteúdo do arquivo, caractere por caractere
+        for i in range(0, len(outputdata)):
+            connectionSocket.send(outputdata[i].encode())
+        connectionSocket.send("\r\n".encode())
+
+        # Fecha a conexão
+        connectionSocket.close()
+
+    except IOError:
+        # Se o arquivo não existir, envia erro HTTP 404
+        connectionSocket.send("HTTP/1.1 404 Not Found\r\n\r\n".encode())
+        connectionSocket.send("<html><body><h1>404 Not Found</h1></body></html>".encode())
+
+        print(f"❌ File not found — sending 404 Not Found ({filename})\n")
+
+        # Fecha o socket do cliente
+        connectionSocket.close()
+
+# Encerra o servidor
+serverSocket.close()
+sys.exit()
